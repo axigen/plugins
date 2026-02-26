@@ -187,7 +187,7 @@ BACK
 ```
 UPDATE Domain example.com
 UPDATE Account name john
-SET password newpassword123
+SET password <password>
 COMMIT
 BACK
 SAVE Config
@@ -200,6 +200,7 @@ SAVE Config
 CONFIG Imap
 STOP Service
 COMMIT
+SAVE Config
 ```
 
 ```
@@ -207,6 +208,7 @@ COMMIT
 CONFIG Imap
 START Service
 COMMIT
+SAVE Config
 ```
 
 ### Configure SMTP relay
