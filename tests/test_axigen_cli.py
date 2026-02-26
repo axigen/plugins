@@ -17,7 +17,7 @@ from unittest.mock import patch, MagicMock, call
 # Add the skills/axigen-cli directory to the path so we can import axigen_cli
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'skills', 'axigen-cli'))
 
-from axigen_cli import parse_response, AxigenCLI
+from axigen_cli import parse_response, AxigenCLI, MAX_RECV_SIZE
 
 
 class TestParseResponse(unittest.TestCase):
@@ -54,9 +54,9 @@ class TestParseResponse(unittest.TestCase):
         self.assertEqual(message, "Done")
 
     def test_unrecognized_line(self):
-        """parse_response should return (False, line) for unrecognized lines."""
+        """parse_response should return (True, line) for unrecognized data lines."""
         success, message = parse_response("some random text")
-        self.assertFalse(success)
+        self.assertTrue(success)
         self.assertEqual(message, "some random text")
 
 
@@ -134,11 +134,12 @@ class TestAxigenCLIExecute(unittest.TestCase):
 
     @patch('axigen_cli.socket.socket')
     def test_execute_success(self, mock_socket_cls):
-        """execute() should return (True, output) on +OK response."""
+        """execute() should return (True, filtered_output) on +OK response."""
         cli, mock_sock = self._make_connected_cli(mock_socket_cls)
 
+        # Realistic response: data lines followed by +OK status, then prompt
         mock_sock.recv.side_effect = [
-            b"+OK: domain1.com\r\ndomain2.com\r\n<#> ",
+            b"domain1.com\r\ndomain2.com\r\n+OK\r\n<#> ",
         ]
 
         success, output = cli.execute("LIST Domains")
@@ -146,10 +147,14 @@ class TestAxigenCLIExecute(unittest.TestCase):
         mock_sock.sendall.assert_called_once_with(b"LIST Domains\r\n")
         self.assertTrue(success)
         self.assertIn("domain1.com", output)
+        self.assertIn("domain2.com", output)
+        # Protocol lines should be filtered out
+        self.assertNotIn("+OK", output)
+        self.assertNotIn("<#>", output)
 
     @patch('axigen_cli.socket.socket')
     def test_execute_failure(self, mock_socket_cls):
-        """execute() should return (False, output) on -ERR response."""
+        """execute() should return (False, filtered_output) on -ERR response."""
         cli, mock_sock = self._make_connected_cli(mock_socket_cls)
 
         mock_sock.recv.side_effect = [
@@ -160,22 +165,27 @@ class TestAxigenCLIExecute(unittest.TestCase):
 
         self.assertFalse(success)
         self.assertIn("Domain not found", output)
+        # Prompt should be filtered out
+        self.assertNotIn("<#>", output)
 
     @patch('axigen_cli.socket.socket')
     def test_execute_multipart_recv(self, mock_socket_cls):
         """execute() should handle responses split across multiple recv() calls."""
         cli, mock_sock = self._make_connected_cli(mock_socket_cls)
 
-        # Response arrives in two parts
+        # Response arrives in two parts - data line split across recv calls
         mock_sock.recv.side_effect = [
-            b"+OK: partial",
-            b" response\r\n<#> ",
+            b"partial",
+            b" response\r\n+OK\r\n<#> ",
         ]
 
         success, output = cli.execute("SHOW")
 
         self.assertTrue(success)
         self.assertIn("partial response", output)
+        # Protocol lines should be filtered out
+        self.assertNotIn("+OK", output)
+        self.assertNotIn("<#>", output)
 
 
 class TestAxigenCLIExecuteSequence(unittest.TestCase):
@@ -345,6 +355,23 @@ class TestAxigenCLIRecvUntilPrompt(unittest.TestCase):
         self.assertIn("Line 2", data)
         self.assertIn("<#>", data)
 
+    @patch('axigen_cli.socket.socket')
+    def test_recv_breaks_on_max_buffer_size(self, mock_socket_cls):
+        """_recv_until_prompt() should stop if buffer exceeds MAX_RECV_SIZE."""
+        mock_sock = MagicMock()
+        mock_socket_cls.return_value = mock_sock
+
+        # Send a chunk that exceeds MAX_RECV_SIZE without a prompt
+        oversized_chunk = b"x" * (MAX_RECV_SIZE + 1)
+        mock_sock.recv.side_effect = [oversized_chunk]
+
+        cli = AxigenCLI("mail.example.com", 7000, "admin", "secret123")
+        cli._sock = mock_sock
+
+        data = cli._recv_until_prompt()
+        # Should have returned the data even without a prompt
+        self.assertEqual(len(data), MAX_RECV_SIZE + 1)
+
 
 class TestAxigenCLISend(unittest.TestCase):
     """Tests for AxigenCLI._send()."""
@@ -372,7 +399,7 @@ class TestMain(unittest.TestCase):
         mock_cli = MagicMock()
         mock_cli_cls.return_value = mock_cli
         mock_cli.execute_sequence.return_value = [
-            ("LIST Domains", True, "+OK: domain1.com"),
+            ("LIST Domains", True, "domain1.com"),
         ]
 
         test_args = [
@@ -397,7 +424,7 @@ class TestMain(unittest.TestCase):
         """main() with --query should execute a single command."""
         mock_cli = MagicMock()
         mock_cli_cls.return_value = mock_cli
-        mock_cli.execute.return_value = (True, "+OK: domain1.com")
+        mock_cli.execute.return_value = (True, "domain1.com")
 
         test_args = [
             'axigen_cli.py',
@@ -418,7 +445,7 @@ class TestMain(unittest.TestCase):
         """main() should return exit code 1 when a query fails."""
         mock_cli = MagicMock()
         mock_cli_cls.return_value = mock_cli
-        mock_cli.execute.return_value = (False, "-ERR: Failed")
+        mock_cli.execute.return_value = (False, "-ERR: Failed")  # -ERR lines kept in output
 
         test_args = [
             'axigen_cli.py',
@@ -444,7 +471,7 @@ class TestMain(unittest.TestCase):
         """main() should use environment variables as defaults."""
         mock_cli = MagicMock()
         mock_cli_cls.return_value = mock_cli
-        mock_cli.execute.return_value = (True, "+OK")
+        mock_cli.execute.return_value = (True, "")
 
         test_args = [
             'axigen_cli.py',
@@ -477,9 +504,9 @@ class TestMain(unittest.TestCase):
         mock_cli = MagicMock()
         mock_cli_cls.return_value = mock_cli
         mock_cli.execute_sequence.return_value = [
-            ("ENTER DEBUG", True, "+OK"),
-            ("EXEC listCliHelp /tmp/cliHelp.txt", True, "+OK"),
-            ("QUIT DEBUG", True, "+OK"),
+            ("ENTER DEBUG", True, ""),
+            ("EXEC listCliHelp /tmp/cliHelp.txt", True, ""),
+            ("QUIT DEBUG", True, ""),
         ]
 
         test_args = [

@@ -33,6 +33,9 @@ import sys
 # Prompt pattern: matches <login> , <#> , <domain#> , <account-quotas#> , etc.
 PROMPT_RE = re.compile(r'<[^>]*>\s*$')
 
+# Maximum receive buffer size to prevent infinite memory growth (1 MB)
+MAX_RECV_SIZE = 1024 * 1024
+
 
 def parse_response(line):
     """Parse a +OK/-ERR response line from Axigen CLI.
@@ -42,7 +45,7 @@ def parse_response(line):
 
     Returns:
         Tuple of (success: bool, message: str).
-        success is True for +OK, False for -ERR or unrecognized lines.
+        success is True for +OK or unrecognized data lines, False for -ERR.
     """
     line = line.strip()
 
@@ -61,8 +64,8 @@ def parse_response(line):
             message = line[4:].strip()
         return (False, message)
 
-    # Unrecognized line
-    return (False, line)
+    # Unrecognized line (data line) - treat as non-error
+    return (True, line)
 
 
 class AxigenCLI:
@@ -123,6 +126,11 @@ class AxigenCLI:
     def execute(self, command):
         """Execute a single command and return the result.
 
+        Filters out protocol lines (+OK, -ERR, prompt patterns) and returns
+        only data lines.  Success is determined by the LAST status line seen,
+        which matches the Axigen protocol where the final status indicates
+        the command result.
+
         Args:
             command: The CLI command to execute.
 
@@ -132,18 +140,19 @@ class AxigenCLI:
         self._send(command)
         response = self._recv_until_prompt()
 
-        # Parse the response to determine success/failure
         success = True
+        output_lines = []
         for line in response.splitlines():
-            line = line.strip()
-            if line.startswith('-ERR'):
-                success = False
-                break
-            if line.startswith('+OK'):
+            stripped = line.strip()
+            if stripped.startswith('+OK'):
                 success = True
-                break
+            elif stripped.startswith('-ERR'):
+                success = False
+                output_lines.append(stripped)
+            elif stripped and not PROMPT_RE.match(stripped):
+                output_lines.append(stripped)
 
-        return (success, response.strip())
+        return (success, '\n'.join(output_lines))
 
     def execute_sequence(self, commands, stop_on_error=True):
         """Execute a sequence of commands.
@@ -212,6 +221,8 @@ class AxigenCLI:
                 # Connection closed
                 break
             buf += chunk
+            if len(buf) > MAX_RECV_SIZE:
+                break
             # Check if we have a complete prompt
             text = buf.decode('utf-8', errors='replace')
             if PROMPT_RE.search(text):
