@@ -1,55 +1,85 @@
-# Axigen Plugins for Claude Code
+# Axigen CLI Skill for Claude Code
 
-Official plugin marketplace for [Axigen](https://www.axigen.com) mail server tools.
+A Claude Code skill that enables Claude to manage Axigen mail servers via the CLI admin interface. Claude can generate the exact CLI commands for any admin task or execute them directly on a live server.
 
-## How to Use
+## Prerequisites
 
-### 1. Add this marketplace
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- Python 3.6+ (standard library only, no pip installs)
+- Network access to an Axigen server's CLI port (default: 7000)
 
-```
-/plugin marketplace add axigen/plugins
-```
+## Installation
 
-### 2. Browse and install skills
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/axigen/axigen-cli-claude-skill.git
+   ```
 
-```
-/plugin install <skill-name>
-/reload-plugins
-```
+2. Copy the skill to your Claude Code skills directory:
+   ```bash
+   cp -r axigen-cli-claude-skill/skills/axigen-cli ~/.claude/skills/
+   ```
 
-## Available Skills
+3. Set environment variables for live command execution:
+   ```bash
+   export AXIGEN_HOST=10.0.0.1        # Required: server IP/hostname
+   export AXIGEN_PORT=7000             # Optional: CLI port (default: 7000)
+   export AXIGEN_USER=admin            # Optional: admin username (default: admin)
+   export AXIGEN_PASS=your_password    # Required: admin password
+   ```
 
-| Skill | Description | Repository |
-|-------|-------------|------------|
-| **axigen-cli** | Manage Axigen mail servers via CLI — create domains, accounts, configure services, manage queues, and more. Supports plain telnet and SSL/TLS connections. | [axigen/plugin-cli-skill](https://github.com/axigen/plugin-cli-skill) |
+## Usage
 
-## Skill Details
+Once installed, Claude will automatically use this skill when you ask about Axigen server administration. Examples:
 
-### axigen-cli
+- "Create a new domain example.com on Axigen"
+- "Add user john to domain example.com with a 1GB quota"
+- "List all accounts in example.com"
+- "Stop the IMAP service"
+- "Show me the SMTP outgoing configuration"
+- "Check DNS MX records for example.com"
 
-AI-assisted Axigen mail server administration through Claude Code. Two modes:
+Claude can either generate the CLI commands for you to copy-paste, or execute them directly if the environment variables are configured.
 
-- **Advisory mode** — ask Claude for CLI command sequences to integrate into your automation
-- **Execution mode** — Claude connects to your server and runs commands live
+## Skill Contents
 
-**Quick start:**
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | Core skill: protocol docs, navigation model, safety rules, task recipes |
+| `cli-reference.md` | Full CLI command reference (68 contexts, from Axigen 10.5.0) |
+| `axigen_cli.py` | Python helper for executing commands on a live server |
+
+## Refreshing the CLI Reference
+
+The bundled reference is from Axigen 10.5.0. To update it for your server version:
+
+1. Generate the help dump on your server:
+   ```bash
+   python3 ~/.claude/skills/axigen-cli/axigen_cli.py --dump-help /tmp/cliHelp.txt
+   ```
+
+2. Retrieve the file from the server:
+   ```bash
+   scp your-server:/tmp/cliHelp.txt .
+   ```
+
+3. Ask Claude to convert the dump and replace `cli-reference.md`.
+
+## Standalone CLI Helper
+
+The Python helper can also be used independently:
 
 ```bash
-# Install
-/plugin marketplace add axigen/plugins
-/plugin install axigen-cli
-/reload-plugins
+# Execute a sequence of commands
+python3 axigen_cli.py --commands 'LIST Domains'
 
-# Configure
-export AXIGEN_HOST=mail.example.com
-export AXIGEN_PASS=your-admin-password
+# Single query
+python3 axigen_cli.py --query 'LIST Domains'
 
-# For SSL connections
-export AXIGEN_SSL=true
+# Commands from stdin
+echo 'LIST Domains' | python3 axigen_cli.py
 ```
 
-**Full documentation, environment variables, SSL options, and usage examples:** see the [axigen-cli README](https://github.com/axigen/plugin-cli-skill).
+## Related
 
-## License
-
-MIT
+- [Axigen Automation Tools](https://github.com/axigen/automation-tools) - Python scripts for common Axigen admin tasks
