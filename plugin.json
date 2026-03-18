@@ -1,0 +1,34 @@
+{
+  "name": "axigen-cli",
+  "version": "1.0.0",
+  "description": "Manage Axigen mail servers via CLI — create domains, accounts, configure services, manage queues, and more. Includes complete command reference for 126 CLI contexts.",
+  "author": "Axigen",
+  "license": "MIT",
+  "keywords": [
+    "axigen",
+    "mail-server",
+    "cli",
+    "email",
+    "domain",
+    "account",
+    "smtp",
+    "imap",
+    "pop3",
+    "administration"
+  ],
+  "category": "devops",
+  "commands": [
+    {
+      "name": "axigen-cli",
+      "description": "Use when the user needs to manage an Axigen mail server - creating domains, accounts, configuring services, running diagnostics, or any Axigen CLI task.",
+      "source": "skills/axigen-cli"
+    }
+  ],
+  "skills": [
+    {
+      "name": "axigen-cli",
+      "path": "skills/axigen-cli/SKILL.md",
+      "description": "Axigen mail server CLI management — domains, accounts, services, queues, filters, SSL, LDAP, and more"
+    }
+  ]
+}

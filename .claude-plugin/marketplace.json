@@ -1,0 +1,26 @@
+{
+  "name": "Axigen Plugins",
+  "owner": {
+    "name": "Axigen",
+    "url": "https://www.axigen.com"
+  },
+  "plugins": [
+    {
+      "name": "axigen-cli",
+      "source": {
+        "source": "github",
+        "repo": "axigen/plugin-cli-skill"
+      },
+      "version": "1.0.0",
+      "description": "Manage Axigen mail servers via CLI — create domains, accounts, configure services, manage queues. Includes Python helper and complete 126-context command reference.",
+      "category": "devops",
+      "keywords": [
+        "axigen",
+        "mail-server",
+        "cli",
+        "email",
+        "administration"
+      ]
+    }
+  ]
+}
