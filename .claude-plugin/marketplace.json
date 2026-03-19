@@ -8,8 +8,8 @@
     {
       "name": "axigen-cli",
       "source": {
-        "source": "github",
-        "repo": "axigen/plugin-cli-skill"
+        "source": "url",
+        "url": "https://github.com/axigen/plugin-cli-skill.git"
       },
       "version": "1.0.0",
       "description": "Manage Axigen mail servers via CLI — create domains, accounts, configure services, manage queues. Includes Python helper and complete 126-context command reference.",
