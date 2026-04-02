@@ -17,17 +17,21 @@
     "administration"
   ],
   "category": "devops",
+  "source": {
+    "source": "url",
+    "url": "https://github.com/axigen/plugin-cli-skill.git"
+  },
   "commands": [
     {
       "name": "axigen-cli",
       "description": "Use when the user needs to manage an Axigen mail server - creating domains, accounts, configuring services, running diagnostics, or any Axigen CLI task.",
-      "source": "skills/axigen-cli"
+      "source": "."
     }
   ],
   "skills": [
     {
       "name": "axigen-cli",
-      "path": "skills/axigen-cli/SKILL.md",
+      "path": "SKILL.md",
       "description": "Axigen mail server CLI management — domains, accounts, services, queues, filters, SSL, LDAP, and more"
     }
   ]
