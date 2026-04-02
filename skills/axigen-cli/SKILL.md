@@ -60,7 +60,11 @@ When generating CLI command sequences for the user:
 
 ## Executing Commands
 
-Run commands on a live server using the Python helper in this skill directory:
+There are two tools available for running CLI commands on a live server:
+
+### Option A: `axigen_cli.py` (bundled with this skill)
+
+Takes commands as separate arguments — suited for structured, multi-step sequences with error control:
 
 ```bash
 # Execute a sequence of commands
@@ -83,6 +87,62 @@ Use the path relative to this skill directory (where this SKILL.md lives). If th
 | `AXIGEN_PORT` | No       | `7000`   | CLI port                 |
 | `AXIGEN_USER` | No       | `admin`  | Admin username           |
 | `AXIGEN_PASS` | Yes      | -        | Admin password           |
+
+### Option B: `run-cli.py` (official Axigen automation script)
+
+Download from: https://www.axigen.com/mail-server/scripts/download/?tool=run-cli.py  
+Recommended install path: `/opt/axigen/scripts/run-cli.py`
+
+Commands are passed as a **single string separated by `|`** (pipe). This script is simpler and faster to use for one-liners, shell scripts, and bulk operations.
+
+```bash
+# Basic usage — pipe commands in a single quoted string
+./run-cli.py "update domain my.domain.org|list accounts"
+
+# FOREACH — iterate over all domains or accounts (virtual command)
+./run-cli.py "foreach domain|list accounts"
+
+# FOREACH over all accounts in all domains
+CLIRESPONSE=0 ./run-cli.py "foreach domain|foreach account|config contactinfo|show|back"
+
+# Read commands from stdin (use - as the argument)
+echo "list domains" | ./run-cli.py -
+
+# SSL connection
+./run-cli.py "list domains" admin-password 127.0.0.1:7000:ssl
+```
+
+**Configuration — environment variables or inline args:**
+
+| Variable / Arg        | Description                                       |
+|-----------------------|---------------------------------------------------|
+| `CLIHOST`             | Server IP (default: `127.0.0.1`)                  |
+| `CLIPORT`             | CLI port (default: `7000`)                        |
+| `CLIPASS`             | Admin password (env var)                          |
+| `CLIRESPONSE`         | Output verbosity: `1`=full (default), `0`=silent, `2`=minimal |
+| 2nd positional arg    | Admin password (overrides `CLIPASS`)              |
+| 3rd positional arg    | `host[:port[:conn-type]]` — `conn-type`: `raw` or `ssl` |
+
+**Special virtual commands (only in `run-cli.py`):**
+
+| Command          | Description                                              |
+|------------------|----------------------------------------------------------|
+| `FOREACH DOMAIN` | Iterates over all active domains                         |
+| `FOREACH ACCOUNT`| Iterates over all accounts in current domain context     |
+| `REMOVE-ITEM`    | Removes the current FOREACH item (e.g. delete account)   |
+| `info`           | Prints the current object name inside a FOREACH loop     |
+| `SHOW ATTR`      | Extended SHOW with attribute details                     |
+
+**When to prefer `run-cli.py` over `axigen_cli.py`:**
+- Bulk operations across all domains or accounts (`FOREACH`)
+- Shell one-liners and cron jobs (simpler invocation syntax)
+- The script is already installed on the Axigen server (`/opt/axigen/scripts/`)
+- Piping commands from stdin or another script
+
+**When to prefer `axigen_cli.py`:**
+- Need JSON output for programmatic parsing
+- Structured multi-step sequences with context-aware error handling
+- Invoked by Claude to automate tasks in this skill
 
 ## Looking Up Command Syntax
 
