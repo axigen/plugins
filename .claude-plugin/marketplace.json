@@ -11,7 +11,7 @@
         "source": "url",
         "url": "https://github.com/axigen/plugin-cli-skill.git"
       },
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Manage Axigen mail servers via CLI \u2014 create domains, accounts, configure services, manage queues. Includes Python helper and complete 126-context command reference.",
       "category": "devops",
       "keywords": [
