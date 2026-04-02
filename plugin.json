@@ -1,6 +1,6 @@
 {
   "name": "axigen-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Manage Axigen mail servers via CLI — create domains, accounts, configure services, manage queues, and more. Includes complete command reference for 126 CLI contexts.",
   "author": "Axigen",
   "license": "MIT",
